@@ -1,236 +1,211 @@
-# 🎙️ VoiceAgent — Local AI Voice-Controlled Agent
+# Voice AI Agent
 
-A fully local, privacy-first AI agent that listens to your voice, understands your intent, and executes actions on your machine — all without sending data to the cloud.
+## Overview
 
-```
-Audio Input → Whisper STT → Ollama LLM → Tool Execution → Streamlit UI
+This project is a voice-controlled AI agent that converts spoken commands into executable actions such as generating code, creating files, and summarizing text.
+
+It integrates speech-to-text, intent detection, and tool execution into a single pipeline with a simple web interface.
+
+---
+
+## Architecture
+
+Audio Input → Speech-to-Text → Intent Detection → Tool Execution → Output
+
+---
+
+## Components
+
+* Speech-to-Text: AssemblyAI API
+* Language Model: Groq API (llama-3.1-8b-instant)
+* Frontend: Streamlit
+* Backend Logic: Python-based agent with modular tools
+
+---
+
+## Features
+
+* Voice input through audio upload
+* Multi-intent detection (compound commands)
+* Code generation and file creation
+* Text summarization
+* Human-in-the-loop confirmation before file operations
+* Graceful error handling
+* Session memory with history tracking
+* File download support
+
+---
+
+## Example Flow
+
+User Input:
+"Create a Python file with a retry function"
+
+System Execution:
+
+1. Audio is transcribed using AssemblyAI
+2. Intent is detected as `write_code` and `create_file`
+3. Python code is generated using Groq
+4. File is created in the `output/` directory
+5. UI displays transcript, intent, and execution result
+
+---
+
+## Setup Instructions
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repository-link>
+cd memoAISTT
 ```
 
 ---
 
-## ✨ Features
-
-| Feature | Details |
-|---|---|
-| **Speech-to-Text** | HuggingFace Whisper (local, CPU/GPU) |
-| **Intent Classification** | Ollama LLM (llama3, mistral, phi3, …) |
-| **Supported Intents** | `create_file`, `write_code`, `summarize`, `general_chat` |
-| **Compound Commands** | "Write a retry function *and* summarize it" |
-| **Human-in-the-Loop** | Confirm before any file/code operation |
-| **Graceful Degradation** | Keyword fallback if LLM JSON fails |
-| **Session Memory** | History panel in sidebar |
-| **Safe Output** | All file ops restricted to `output/` folder |
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Streamlit UI (app.py)                 │
-│  ┌──────────┐   ┌──────────┐   ┌──────────────────────┐ │
-│  │  Audio   │   │  Text    │   │   Pipeline Display    │ │
-│  │  Upload  │   │ Override │   │  STT→Intent→Action   │ │
-│  └────┬─────┘   └────┬─────┘   └──────────────────────┘ │
-└───────┼──────────────┼──────────────────────────────────┘
-        │              │
-        ▼              ▼
-┌──────────────────────────┐
-│       stt.py             │
-│  HuggingFace Whisper     │
-│  (openai/whisper-base)   │
-│  Runs 100% locally       │
-└──────────────────────────┘
-        │
-        ▼ transcript (str)
-┌──────────────────────────┐
-│       intent.py          │
-│  Ollama REST API         │
-│  → Structured JSON       │
-│  { intents, params,      │
-│    reasoning }           │
-└──────────────────────────┘
-        │
-        ▼ intents + params
-┌──────────────────────────────────────────────────┐
-│                   tools.py                        │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  │
-│  │ write_code │  │ create_file│  │ summarize  │  │
-│  │ (Ollama)   │  │ (template) │  │ (Ollama)   │  │
-│  └────────────┘  └────────────┘  └────────────┘  │
-│  ┌────────────┐                                   │
-│  │general_chat│  All file I/O → output/ only      │
-│  │ (Ollama)   │                                   │
-│  └────────────┘                                   │
-└──────────────────────────────────────────────────┘
-        │
-        ▼
-   output/ folder
-```
-
----
-
-## 🚀 Quick Start
-
-### 1. Prerequisites
-
-- **Python 3.10+**
-- **Ollama** installed and running
-- **ffmpeg** for audio decoding
+### 2. Install dependencies
 
 ```bash
-# Install ffmpeg (Ubuntu/Debian)
-sudo apt install ffmpeg
-
-# macOS
-brew install ffmpeg
-
-# Windows — download from https://ffmpeg.org/download.html
-```
-
-### 2. Install Ollama & pull a model
-
-```bash
-# Install Ollama: https://ollama.com
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull a model (llama3 recommended)
-ollama pull llama3
-
-# Start the server (runs on localhost:11434)
-ollama serve
-```
-
-### 3. Clone & install Python dependencies
-
-```bash
-git clone https://github.com/YOUR_USERNAME/voice-agent.git
-cd voice-agent
-
-python -m venv venv
-source venv/bin/activate       # Windows: venv\Scripts\activate
-
 pip install -r requirements.txt
 ```
 
-> **Note on torch**: If you only have CPU, the above installs the default torch.
-> For CUDA GPU acceleration: `pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121`
+---
 
-### 4. Run the app
+### 3. Configure API Keys
+
+Update the following files:
+
+In `stt.py`:
+
+```python
+aai.settings.api_key = "YOUR_ASSEMBLYAI_API_KEY"
+```
+
+In `intent.py` and `tools.py`:
+
+```python
+from groq import Groq
+client = Groq(api_key="YOUR_GROQ_API_KEY")
+```
+
+---
+
+### 4. Run the application
 
 ```bash
 streamlit run app.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+Then open the local URL in your browser.
 
 ---
 
-## 🎮 Usage Examples
-
-### Example 1 — Write Code
-> "Create a Python file with a retry decorator function"
-
-Pipeline:
-1. Whisper transcribes the audio
-2. Ollama detects: `write_code + create_file`
-3. Generates Python code with a `retry` decorator
-4. Saves to `output/retry_decorator.py`
-
-### Example 2 — Summarize
-> "Summarize this article: AI is transforming healthcare..."
-
-Pipeline:
-1. Transcription extracted
-2. Intent: `summarize`
-3. Ollama produces a bullet-point summary
-4. Optionally saved to `output/summary.txt`
-
-### Example 3 — Compound Command
-> "Write a JavaScript fetch wrapper and summarize what it does"
-
-Pipeline:
-1. Intent: `write_code + summarize`
-2. Generates the JS code → `output/fetch_wrapper.js`
-3. Summarizes the code → displayed in UI
-
-### Example 4 — General Chat
-> "What's the difference between async and threading in Python?"
-
-Pipeline:
-1. Intent: `general_chat`
-2. Ollama answers conversationally in the UI
-
----
-
-## 🧩 Project Structure
+## Project Structure
 
 ```
-voice-agent/
-├── app.py            # Streamlit UI — pipeline orchestration
-├── stt.py            # HuggingFace Whisper STT
-├── intent.py         # Ollama intent classifier
-├── tools.py          # Tool execution (file ops, code gen, summarize, chat)
+memoAISTT/
+├── app.py
+├── stt.py
+├── intent.py
+├── tools.py
 ├── requirements.txt
-├── output/           # ← All generated files go here (safe zone)
-└── README.md
+├── README.md
+└── output/
 ```
 
 ---
 
-## ⚙️ Configuration
+## Speech-to-Text and Model Choices
 
-All settings are adjustable from the sidebar at runtime:
+### Initial Approach (Local Models)
 
-| Setting | Default | Options |
-|---|---|---|
-| Ollama Model | `llama3` | llama3.2, mistral, phi3, gemma2 |
-| Whisper Model | `whisper-base` | whisper-small, whisper-medium |
-| Human-in-the-Loop | `ON` | Toggle off for auto-execute |
+The initial design used local models:
 
----
+* HuggingFace Whisper for speech-to-text
+* Ollama for intent detection and code generation
 
-## 🔧 Hardware Notes & Workarounds
+However, several issues were encountered:
 
-### STT — Whisper (local HuggingFace)
-- **`whisper-base`** (~150MB): Works on any modern CPU. ~5–15s per 10s of audio.
-- **`whisper-small`** (~250MB): Better accuracy, ~10–25s on CPU.
-- **GPU (CUDA)**: Detected automatically — drops latency to <3s.
-- If your machine is too slow: switch to **Groq Whisper API** by replacing `stt.py`'s `_pipeline` call with a Groq API request. Document this in your own README copy.
-
-### LLM — Ollama
-- **llama3** (8B): ~4–8GB RAM. Works well on most laptops.
-- **phi3-mini**: ~2GB RAM. Good for constrained machines.
-- Ollama must be running (`ollama serve`) before launching the app.
+* FFmpeg setup problems on Windows
+* High memory usage and instability
+* Slow inference on CPU-only systems
+* Frequent crashes during integration
 
 ---
 
-## 🎁 Bonus Features Implemented
+### Final Approach (API-based Models)
 
-- [x] **Compound Commands** — Multiple intents in one utterance
-- [x] **Human-in-the-Loop** — Confirmation prompt before file ops
-- [x] **Graceful Degradation** — Keyword fallback if LLM JSON parse fails; error cards in UI
-- [x] **Session Memory** — Sidebar history panel with last 8 interactions
-- [x] **Text Override** — Type commands directly (no mic needed for testing)
+Based on developer discussions (including Reddit) and practical constraints, the system was migrated to API-based solutions.
 
----
+#### AssemblyAI (Speech-to-Text)
 
-## 📝 Notes for Article / README
+* Fast and accurate transcription
+* Free tier available
+* No dependency on local hardware
+* Eliminates setup complexity
 
-### Model Choices
+#### Groq API (Language Model)
 
-| Component | Model | Why |
-|---|---|---|
-| STT | `openai/whisper-base` | Best accuracy/speed tradeoff locally; multilingual |
-| LLM | `llama3` (8B via Ollama) | Strong instruction following; fast on CPU/GPU; fully local |
-
-### Challenges Faced
-1. **JSON reliability from LLM**: Small models sometimes wrap JSON in markdown fences or add preamble text. Solved with regex extraction + keyword fallback.
-2. **Audio format diversity**: Used `librosa` + `soundfile` to handle wav/mp3/m4a/ogg uniformly.
-3. **Compound intent ordering**: Write_code implicitly creates a file — needed deduplication logic in `execute_action`.
+* Very fast inference
+* No hardware requirements
+* Stable and reliable responses
+* Suitable for real-time applications
 
 ---
 
-## 📄 License
+### Reasoning
 
-MIT — use freely, build boldly.
+This approach was chosen to:
+
+* Ensure smooth execution on standard machines
+* Avoid environment and dependency issues
+* Improve speed and responsiveness
+* Focus on agent functionality rather than infrastructure
+
+While local models offer more control, API-based solutions are often preferred in production due to their scalability and reliability.
+
+---
+
+## Hardware Notes
+
+* The system runs on CPU-only machines without requiring GPU support
+* No need for FFmpeg or CUDA setup
+* Suitable for laptops with limited resources
+
+---
+
+## Challenges Faced
+
+* Setting up local STT (Whisper) with FFmpeg on Windows
+* Managing memory constraints with local LLMs
+* Handling inconsistent JSON responses from LLMs
+* Debugging silent failures in Streamlit
+* Managing model deprecations in Groq
+
+---
+
+## Bonus Features Implemented
+
+* Compound command handling (multiple intents in one input)
+* Human-in-the-loop confirmation for file operations
+* Graceful fallback when intent detection fails
+* Session memory for tracking interactions
+
+---
+
+## Future Improvements
+
+* Real-time microphone input
+* Persistent memory across sessions
+* Streaming responses
+* Enhanced UI and visualization
+* Support for additional tools and actions
+
+---
+
+## Conclusion
+
+This project demonstrates how speech processing, language models, and tool execution can be combined to build an intelligent agent system.
+
+It highlights practical tradeoffs between local and API-based models, and focuses on delivering a stable and responsive user experience.
+
+---
